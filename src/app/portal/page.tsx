@@ -476,7 +476,7 @@ export default function TenantPortal() {
                   <label className="block text-xs font-medium text-zinc-400 mb-2">Select Building</label>
                   <div className="grid grid-cols-5 gap-2">
                     {['A', 'B', 'C', 'D', 'E'].map(b => (
-                      <button key={b} type="button" onClick={() => setLocation(prev => `Block ${b}, ${prev.includes('Floor') ? prev.split(', ').slice(1).join(', ') : prev}`)} className={`p-3 rounded-xl text-center transition ${location.includes(`Block ${b}`) ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400' : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}>
+                      <button key={b} type="button" onClick={() => { const unit = user?.unit || ''; setLocation(`Block ${b}${unit ? `, ${unit}` : ''}`); }} className={`p-3 rounded-xl text-center transition ${location.startsWith(`Block ${b}`) ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400' : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}>
                         <div className="text-lg font-bold">{b}</div>
                         <div className="text-[9px]">Block {b}</div>
                       </button>

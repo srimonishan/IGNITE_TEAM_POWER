@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResolveHQ - Presentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #09090b; color: #fafafa; }
+  .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 40px; position: relative; overflow: hidden; }
+  .page + .page { border-top: 1px solid rgba(255,255,255,0.04); }
+  .glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; filter: blur(120px); pointer-events: none; opacity: 0.07; }
+  .glow-indigo { background: #6366f1; }
+  .glow-purple { background: #a855f7; }
+  .tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; font-size: 12px; font-weight: 500; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: #a1a1aa; margin-bottom: 24px; }
+  .tag .dot { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; }
+  h1 { font-size: 72px; font-weight: 800; letter-spacing: -2px; line-height: 1; margin-bottom: 16px; }
+  h2 { font-size: 48px; font-weight: 700; letter-spacing: -1.5px; margin-bottom: 12px; }
+  h3 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .gradient-text { background: linear-gradient(135deg, #818cf8, #a78bfa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { font-size: 20px; color: #71717a; line-height: 1.6; max-width: 640px; text-align: center; }
+  .section-label { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #6366f1; margin-bottom: 12px; }
+
+  /* Tech Stack */
+  .tech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 800px; width: 100%; margin-top: 40px; }
+  .tech-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 28px 24px; text-align: center; transition: all 0.2s; }
+  .tech-card:hover { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.04); }
+  .tech-icon { width: 48px; height: 48px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 24px; font-weight: 700; }
+  .tech-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .tech-desc { font-size: 12px; color: #71717a; }
+
+  /* Diagrams */
+  .diagram { max-width: 960px; width: 100%; margin-top: 40px; }
+  .flow-row { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; }
+  .flow-node { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px 24px; text-align: center; min-width: 140px; position: relative; }
+  .flow-node.accent { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.06); }
+  .flow-node.green { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
+  .flow-node.amber { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+  .flow-node.red { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+  .flow-node .node-icon { font-size: 24px; margin-bottom: 6px; }
+  .flow-node .node-title { font-size: 13px; font-weight: 600; }
+  .flow-node .node-desc { font-size: 10px; color: #71717a; margin-top: 4px; }
+  .flow-arrow { color: #3f3f46; font-size: 20px; padding: 0 8px; flex-shrink: 0; }
+
+  /* ML Diagram */
+  .ml-flow { display: flex; flex-direction: column; gap: 24px; max-width: 900px; width: 100%; margin-top: 40px; }
+  .ml-row { display: flex; align-items: stretch; gap: 16px; justify-content: center; }
+  .ml-box { border-radius: 14px; padding: 20px; flex: 1; max-width: 260px; position: relative; }
+  .ml-box .ml-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; opacity: 0.6; }
+  .ml-box .ml-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .ml-box .ml-desc { font-size: 11px; opacity: 0.7; line-height: 1.5; }
+  .ml-box.input { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); }
+  .ml-box.process { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); }
+  .ml-box.llm { background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.2); }
+  .ml-box.output { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); }
+  .ml-box.alert { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+  .ml-connector { display: flex; align-items: center; justify-content: center; color: #3f3f46; font-size: 18px; }
+
+  /* App Workflow */
+  .app-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 960px; width: 100%; margin-top: 40px; }
+  .app-step { border-radius: 16px; padding: 24px 20px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); }
+  .app-step .step-num { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; margin-bottom: 14px; }
+  .app-step .step-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .app-step .step-detail { font-size: 11px; color: #71717a; line-height: 1.6; }
+  .app-step .step-items { list-style: none; padding: 0; margin-top: 10px; }
+  .app-step .step-items li { font-size: 11px; color: #a1a1aa; padding: 3px 0; padding-left: 14px; position: relative; }
+  .app-step .step-items li::before { content: ''; position: absolute; left: 0; top: 10px; width: 6px; height: 6px; border-radius: 50%; }
+  .s1 .step-num { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .s1 .step-items li::before { background: #3b82f6; }
+  .s2 .step-num { background: rgba(99,102,241,0.15); color: #818cf8; }
+  .s2 .step-items li::before { background: #6366f1; }
+  .s3 .step-num { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .s3 .step-items li::before { background: #f59e0b; }
+  .s4 .step-num { background: rgba(16,185,129,0.15); color: #34d399; }
+  .s4 .step-items li::before { background: #10b981; }
+
+  .logo { width: 64px; height: 64px; border-radius: 20px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: white; margin-bottom: 24px; box-shadow: 0 20px 40px rgba(99,102,241,0.25); }
+  .footer-note { font-size: 12px; color: #3f3f46; margin-top: 40px; }
+  @media print { .page { page-break-after: always; min-height: auto; padding: 40px; } }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: App Name + Slogan -->
+<div class="page">
+  <div class="glow glow-indigo" style="top:-200px;left:50%;transform:translateX(-50%)"></div>
+  <div class="logo">R</div>
+  <h1>Resolve<span class="gradient-text">HQ</span></h1>
+  <p style="font-size:22px;color:#a1a1aa;font-weight:400;margin-bottom:32px;text-align:center;max-width:580px;line-height:1.5">
+    AI-Powered Smart Apartment Service Management Platform
+  </p>
+  <p style="font-size:16px;color:#6366f1;font-weight:600;letter-spacing:0.5px;margin-bottom:48px">
+    &ldquo; Where AI meets maintenance &mdash; resolve smarter, not harder &rdquo;
+  </p>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <span style="padding:8px 20px;border-radius:12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);color:#818cf8;font-size:13px;font-weight:600">AI Priority Detection</span>
+    <span style="padding:8px 20px;border-radius:12px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);color:#a78bfa;font-size:13px;font-weight:600">GenAI Resolution Plans</span>
+    <span style="padding:8px 20px;border-radius:12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#34d399;font-size:13px;font-weight:600">Agentic Workflow</span>
+  </div>
+  <p class="footer-note">Team POWER &bull; IGNITE Hackathon 2026</p>
+</div>
+
+<!-- SLIDE 2: Tech Stack -->
+<div class="page">
+  <div class="glow glow-purple" style="top:50%;right:-200px;transform:translateY(-50%)"></div>
+  <p class="section-label">Technology</p>
+  <h2>Tech Stack</h2>
+  <p class="subtitle" style="font-size:16px;margin-bottom:8px">Modern, production-ready architecture</p>
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(255,255,255,0.05)">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 19.5h20L12 2z" fill="#fff"/></svg>
+      </div>
+      <div class="tech-name">Next.js 14</div>
+      <div class="tech-desc">Full-stack React framework<br>App Router + API Routes</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(49,120,198,0.12)">
+        <span style="color:#3178c6;font-size:20px;font-weight:800">TS</span>
+      </div>
+      <div class="tech-name">TypeScript</div>
+      <div class="tech-desc">Type-safe development<br>End-to-end type checking</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(56,189,248,0.12)">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 6l-8 14h16L12 6z" stroke="#38bdf8" stroke-width="2"/></svg>
+      </div>
+      <div class="tech-name">Tailwind CSS</div>
+      <div class="tech-desc">Utility-first styling<br>Responsive dark/light UI</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(99,102,241,0.12)">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" fill="#818cf8"/><path d="M12 2v4m0 12v4m-10-10h4m12 0h4" stroke="#818cf8" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+      <div class="tech-name">Google Gemini 2.0</div>
+      <div class="tech-desc">Flash LLM for analysis<br>3-key round-robin rotation</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(251,146,60,0.12)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7l2-7z" fill="#fb923c"/></svg>
+      </div>
+      <div class="tech-name">Firebase</div>
+      <div class="tech-desc">Firestore DB + Auth<br>Google OAuth + Email/Password</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(16,185,129,0.12)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="#10b981" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+      <div class="tech-name">REST API</div>
+      <div class="tech-desc">7 API endpoints<br>Monolith architecture</div>
+    </div>
+  </div>
+  <p class="footer-note">Monolith with clean separation &mdash; designed for scalable migration</p>
+</div>
+
+<!-- SLIDE 3: AI/ML Workflow -->
+<div class="page">
+  <div class="glow glow-indigo" style="bottom:-200px;left:-200px"></div>
+  <p class="section-label">Intelligence</p>
+  <h2>AI / ML Workflow</h2>
+  <p class="subtitle" style="font-size:15px;margin-bottom:8px">Three AI capabilities in one autonomous pipeline</p>
+  <div class="ml-flow">
+    <!-- Row 1: Input -->
+    <div class="ml-row">
+      <div class="ml-box input">
+        <div class="ml-label" style="color:#60a5fa">Input</div>
+        <div class="ml-title" style="color:#93c5fd">User Request</div>
+        <div class="ml-desc" style="color:#93c5fd">"The elevator in Building B is making a grinding noise and stopped on floor 3"</div>
+      </div>
+      <div class="ml-connector">&rarr;</div>
+      <div class="ml-box input">
+        <div class="ml-label" style="color:#60a5fa">NLP Extraction</div>
+        <div class="ml-title" style="color:#93c5fd">Feature Extraction</div>
+        <div class="ml-desc" style="color:#93c5fd">Keywords: elevator, grinding, stopped<br>Location: Building B, Floor 3<br>Entities detected</div>
+      </div>
+    </div>
+    <!-- Row 2: Processing -->
+    <div style="text-align:center;color:#3f3f46;font-size:18px">&darr;</div>
+    <div class="ml-row">
+      <div class="ml-box process">
+        <div class="ml-label" style="color:#818cf8">AI Feature 1</div>
+        <div class="ml-title" style="color:#a5b4fc">Priority Prediction</div>
+        <div class="ml-desc" style="color:#a5b4fc">Weighted keyword scoring<br>+ LLM analysis<br>Result: <strong>CRITICAL</strong></div>
+      </div>
+      <div class="ml-box process">
+        <div class="ml-label" style="color:#818cf8">AI Feature 2</div>
+        <div class="ml-title" style="color:#a5b4fc">Category Classification</div>
+        <div class="ml-desc" style="color:#a5b4fc">13-class taxonomy<br>NLP pattern matching<br>Result: <strong>ELEVATOR</strong></div>
+      </div>
+      <div class="ml-box process">
+        <div class="ml-label" style="color:#818cf8">AI Feature 3</div>
+        <div class="ml-title" style="color:#a5b4fc">Summary Generator</div>
+        <div class="ml-desc" style="color:#a5b4fc">LLM summarization<br>Concise description<br>for quick scanning</div>
+      </div>
+    </div>
+    <!-- Row 3: GenAI -->
+    <div style="text-align:center;color:#3f3f46;font-size:18px">&darr;</div>
+    <div class="ml-row">
+      <div class="ml-box llm" style="max-width:440px">
+        <div class="ml-label" style="color:#c084fc">GenAI Feature &mdash; Gemini 2.0 Flash LLM</div>
+        <div class="ml-title" style="color:#d8b4fe">Resolution Plan Generator</div>
+        <div class="ml-desc" style="color:#d8b4fe">Domain-specific system prompt &rarr; Context injection &rarr; Step-by-step maintenance resolution with time estimates, required tools, and safety considerations</div>
+      </div>
+      <div class="ml-box alert" style="max-width:240px">
+        <div class="ml-label" style="color:#f87171">Agentic Decision</div>
+        <div class="ml-title" style="color:#fca5a5">Alert Engine</div>
+        <div class="ml-desc" style="color:#fca5a5">If priority = CRITICAL<br>&rarr; Trigger instant alert<br>&rarr; Auto-escalate to admin<br>&rarr; SLA timer starts</div>
+      </div>
+    </div>
+    <!-- Row 4: Output -->
+    <div style="text-align:center;color:#3f3f46;font-size:18px">&darr;</div>
+    <div class="ml-row">
+      <div class="ml-box output" style="max-width:640px">
+        <div class="ml-label" style="color:#34d399">Output &mdash; Complete AI Analysis</div>
+        <div class="ml-title" style="color:#6ee7b7">Structured Result to Dashboard</div>
+        <div class="ml-desc" style="color:#6ee7b7">Priority: CRITICAL &bull; Category: ELEVATOR &bull; Summary &bull; 5 Resolution Steps &bull; Est. Time: 2h &bull; Confidence: 92% &bull; Alert: Triggered &bull; Reasoning: Safety hazard, tenant may be trapped</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: Application Workflow -->
+<div class="page">
+  <div class="glow glow-purple" style="top:-200px;right:-200px"></div>
+  <p class="section-label">Architecture</p>
+  <h2>Application Workflow</h2>
+  <p class="subtitle" style="font-size:15px;margin-bottom:8px">End-to-end request lifecycle</p>
+
+  <!-- Main flow -->
+  <div style="margin-top:32px;margin-bottom:48px">
+    <div class="flow-row" style="gap:0">
+      <div class="flow-node">
+        <div class="node-icon">&#128100;</div>
+        <div class="node-title">Tenant</div>
+        <div class="node-desc">Reports issue via<br>form or AI chat</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node accent">
+        <div class="node-icon">&#129302;</div>
+        <div class="node-title">AI Engine</div>
+        <div class="node-desc">Analyze, classify,<br>prioritize, resolve</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node">
+        <div class="node-icon">&#128202;</div>
+        <div class="node-title">Kanban Board</div>
+        <div class="node-desc">Request enters<br>as NEW status</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node amber">
+        <div class="node-icon">&#128736;</div>
+        <div class="node-title">Admin Reviews</div>
+        <div class="node-desc">Assigns to<br>maintenance staff</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node">
+        <div class="node-icon">&#128295;</div>
+        <div class="node-title">Staff Works</div>
+        <div class="node-desc">Follows AI resolution<br>updates status</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node green">
+        <div class="node-icon">&#9989;</div>
+        <div class="node-title">Resolved</div>
+        <div class="node-desc">Marked complete<br>tenant notified</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed steps -->
+  <div class="app-flow">
+    <div class="app-step s1">
+      <div class="step-num">1</div>
+      <div class="step-title">Request Submission</div>
+      <div class="step-detail">Tenant creates request</div>
+      <ul class="step-items">
+        <li>Title + Description</li>
+        <li>Building block selector</li>
+        <li>AI Chat natural language</li>
+        <li>Auto-timestamp</li>
+      </ul>
+    </div>
+    <div class="app-step s2">
+      <div class="step-num">2</div>
+      <div class="step-title">AI Processing</div>
+      <div class="step-detail">Autonomous analysis</div>
+      <ul class="step-items">
+        <li>Category classification</li>
+        <li>Priority prediction</li>
+        <li>Resolution generation</li>
+        <li>Alert if CRITICAL</li>
+      </ul>
+    </div>
+    <div class="app-step s3">
+      <div class="step-num">3</div>
+      <div class="step-title">Admin Management</div>
+      <div class="step-detail">Property manager control</div>
+      <ul class="step-items">
+        <li>Kanban board overview</li>
+        <li>Assign to staff</li>
+        <li>Analytics & charts</li>
+        <li>AI chatbot assistant</li>
+      </ul>
+    </div>
+    <div class="app-step s4">
+      <div class="step-num">4</div>
+      <div class="step-title">Resolution</div>
+      <div class="step-detail">Staff completes work</div>
+      <ul class="step-items">
+        <li>Staff Kanban board</li>
+        <li>AI resolution steps</li>
+        <li>Status updates</li>
+        <li>PDF report export</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: System Architecture -->
+<div class="page">
+  <div class="glow glow-indigo" style="top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+  <p class="section-label">System Design</p>
+  <h2>System Architecture</h2>
+  <p class="subtitle" style="font-size:15px;margin-bottom:32px">Monolith with clean separation</p>
+
+  <div style="max-width:800px;width:100%">
+    <!-- Layer 1: Client -->
+    <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:16px;padding:20px;margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#60a5fa;margin-bottom:12px">Client Layer</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:13px;font-weight:600;color:#93c5fd">Landing Page</div>
+          <div style="font-size:10px;color:#60a5fa;margin-top:2px">Marketing + Auth</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:13px;font-weight:600;color:#93c5fd">Admin Dashboard</div>
+          <div style="font-size:10px;color:#60a5fa;margin-top:2px">Kanban + Users + AI Chat</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:13px;font-weight:600;color:#93c5fd">Tenant Portal</div>
+          <div style="font-size:10px;color:#60a5fa;margin-top:2px">Submit + Track + Hotline</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:13px;font-weight:600;color:#93c5fd">Staff Portal</div>
+          <div style="font-size:10px;color:#60a5fa;margin-top:2px">Assigned Tasks Kanban</div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;color:#3f3f46;font-size:18px;margin:4px 0">&darr; REST API &darr;</div>
+    <!-- Layer 2: API -->
+    <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:16px;padding:20px;margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#818cf8;margin-bottom:12px">API Layer &mdash; Next.js API Routes</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.15);font-size:11px;font-weight:600;color:#a5b4fc">POST /requests</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.15);font-size:11px;font-weight:600;color:#a5b4fc">GET /requests</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.15);font-size:11px;font-weight:600;color:#a5b4fc">PUT /requests/[id]/status</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.15);font-size:11px;font-weight:600;color:#a5b4fc">PUT /requests/[id]/assign</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.15);font-size:11px;font-weight:600;color:#c4b5fd">POST /ai/analyze</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.15);font-size:11px;font-weight:600;color:#c4b5fd">POST /ai/chat</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.15);font-size:11px;font-weight:600;color:#c4b5fd">POST /ai/admin-chat</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.15);font-size:11px;font-weight:600;color:#6ee7b7">GET /dashboard</span>
+        <span style="padding:6px 14px;border-radius:8px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.15);font-size:11px;font-weight:600;color:#6ee7b7">CRUD /users</span>
+      </div>
+    </div>
+    <div style="text-align:center;color:#3f3f46;font-size:18px;margin:4px 0">&darr;&darr;</div>
+    <!-- Layer 3: Services -->
+    <div style="display:flex;gap:16px">
+      <div style="flex:1;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.15);border-radius:16px;padding:20px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#a78bfa;margin-bottom:8px">AI Engine</div>
+        <div style="font-size:13px;font-weight:600;color:#c4b5fd;margin-bottom:4px">Google Gemini 2.0 Flash</div>
+        <div style="font-size:10px;color:#a78bfa;line-height:1.6">Priority Prediction<br>Category Classification<br>Resolution Generator<br>Chat-to-Request<br>Admin AI Assistant<br>3-key round-robin</div>
+      </div>
+      <div style="flex:1;background:rgba(251,146,60,0.06);border:1px solid rgba(251,146,60,0.15);border-radius:16px;padding:20px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#fb923c;margin-bottom:8px">Database</div>
+        <div style="font-size:13px;font-weight:600;color:#fdba74;margin-bottom:4px">Firebase Firestore</div>
+        <div style="font-size:10px;color:#fb923c;line-height:1.6">requests collection<br>users collection<br>In-memory fallback<br>Real-time persistence</div>
+      </div>
+      <div style="flex:1;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:16px;padding:20px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#34d399;margin-bottom:8px">Authentication</div>
+        <div style="font-size:13px;font-weight:600;color:#6ee7b7;margin-bottom:4px">Firebase Auth</div>
+        <div style="font-size:10px;color:#34d399;line-height:1.6">Google OAuth 2.0<br>Email/Password<br>Role-based access<br>Admin + Tenant roles</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
