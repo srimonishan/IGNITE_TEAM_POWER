@@ -46,6 +46,8 @@ export default function OnboardingPage() {
   const [deploying, setDeploying] = useState(false);
 
   useEffect(() => {
+    const user = localStorage.getItem('rhq-user');
+    if (!user) { router.push('/auth?mode=signup'); return; }
     const saved = localStorage.getItem('rhq-theme') as 'light' | 'dark' | null;
     const savedLang = localStorage.getItem('rhq-lang');
     const savedCur = localStorage.getItem('rhq-currency');
@@ -56,7 +58,7 @@ export default function OnboardingPage() {
       if (c) setCurrency(c);
     }
     setMounted(true);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (mounted) {

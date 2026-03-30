@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 type Status = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED';
@@ -51,6 +53,11 @@ function DashboardContent() {
   const [sel, setSel] = useState<ServiceRequest | null>(null);
   const [priFilter, setPriFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    try { const u = JSON.parse(localStorage.getItem('rhq-user') || '{}'); setUserName(u.name || ''); } catch {}
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -76,6 +83,20 @@ function DashboardContent() {
   const crits = reqs.filter((r) => r.priority === 'CRITICAL' && r.status !== 'COMPLETED');
   const col = (s: Status) => reqs.filter((r) => r.status === s);
 
+  const exportPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const rows = reqs.map(r =>
+      `<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb">${r.title}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${r.priority}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${r.status.replace('_',' ')}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${r.category}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${r.location || '-'}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${r.assignedTo || 'Unassigned'}</td><td style="padding:8px;border-bottom:1px solid #e5e7eb">${new Date(r.createdAt).toLocaleString()}</td></tr>`
+    ).join('');
+    const ai = reqs.filter(r => r.aiAnalysis).map(r =>
+      `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px"><h4 style="margin:0 0 6px;font-size:14px">${r.title}</h4><p style="margin:2px 0;font-size:12px;color:#555">Priority: ${r.aiAnalysis!.predictedPriority} (${Math.round(r.aiAnalysis!.confidence * 100)}% confidence)</p><p style="margin:2px 0;font-size:12px;color:#555">Summary: ${r.aiAnalysis!.summary}</p><p style="margin:2px 0;font-size:12px;color:#555">Est. Time: ${r.aiAnalysis!.estimatedTime}</p><div style="margin-top:6px"><p style="font-size:11px;font-weight:600;margin-bottom:4px">Resolution Steps:</p>${r.aiAnalysis!.resolutionSteps.map((s, i) => `<p style="font-size:11px;margin:2px 0;color:#444">${i + 1}. ${s}</p>`).join('')}</div></div>`
+    ).join('');
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>ResolveHQ Report - ${m.name}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#111}h1{font-size:24px;margin-bottom:4px}h2{font-size:18px;margin:24px 0 12px;padding-bottom:8px;border-bottom:2px solid #111}h3{font-size:15px;margin:20px 0 8px}table{width:100%;border-collapse:collapse;font-size:12px}th{padding:10px 8px;text-align:left;background:#f3f4f6;font-weight:600;border-bottom:2px solid #d1d5db}td{vertical-align:top}.stats{display:flex;gap:16px;margin:16px 0}.stat{flex:1;padding:12px;border:1px solid #e5e7eb;border-radius:8px;text-align:center}.stat-num{font-size:28px;font-weight:700}.stat-lbl{font-size:11px;color:#666;margin-top:2px}.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}@media print{body{padding:20px}}</style></head><body><div class="header"><div><h1>ResolveHQ Service Report</h1><p style="color:#666;font-size:13px">${m.name} - ${m.role}</p></div><p style="font-size:11px;color:#999">Generated: ${new Date().toLocaleString()}</p></div><div class="stats"><div class="stat"><div class="stat-num">${stats?.total || 0}</div><div class="stat-lbl">Total Requests</div></div><div class="stat"><div class="stat-num" style="color:#ef4444">${stats?.criticalCount || 0}</div><div class="stat-lbl">Critical</div></div><div class="stat"><div class="stat-num" style="color:#3b82f6">${stats?.byStatus?.NEW || 0}</div><div class="stat-lbl">New</div></div><div class="stat"><div class="stat-num" style="color:#f59e0b">${stats?.byStatus?.IN_PROGRESS || 0}</div><div class="stat-lbl">In Progress</div></div><div class="stat"><div class="stat-num" style="color:#22c55e">${stats?.byStatus?.COMPLETED || 0}</div><div class="stat-lbl">Completed</div></div></div><h2>All Requests</h2><table><thead><tr><th>Title</th><th>Priority</th><th>Status</th><th>Category</th><th>Location</th><th>Assigned To</th><th>Created</th></tr></thead><tbody>${rows || '<tr><td colspan="7" style="padding:16px;text-align:center;color:#999">No requests</td></tr>'}</tbody></table>${ai ? `<h2>AI Analysis Insights</h2>${ai}` : ''}<div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;color:#999;font-size:10px">ResolveHQ - AI-Powered Service Resolution Platform | IGNITE Hackathon 2026 - Team POWER</div></body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
@@ -95,8 +116,16 @@ function DashboardContent() {
             <select value={domain} onChange={(e) => router.push(`/dashboard?domain=${e.target.value}`)} className="text-xs px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:outline-none cursor-pointer">
               {Object.entries(META).map(([k, v]) => <option key={k} value={k} className="bg-zinc-900">{v.name}</option>)}
             </select>
+            <button onClick={exportPDF} className="text-xs px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition-colors text-zinc-300 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              PDF
+            </button>
             <button onClick={() => router.push(`/submit?domain=${domain}`)} className="text-xs px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors font-medium">
               New request
+            </button>
+            {userName && <span className="text-[10px] text-zinc-500 hidden md:block">{userName}</span>}
+            <button onClick={async () => { try { await signOut(auth); } catch {} localStorage.removeItem('rhq-user'); localStorage.removeItem('rhq-org'); router.push('/'); }} className="text-xs px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition-colors text-zinc-400">
+              Sign out
             </button>
           </div>
         </div>
