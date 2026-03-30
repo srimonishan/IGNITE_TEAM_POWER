@@ -175,11 +175,12 @@ export default function DashboardPage() {
 
   const handleAssign = async (id: string, team: string, staffUid?: string) => {
     try {
-      await fetch(`/api/requests/${id}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/requests/${id}/assign`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedTo: team, assignedToUid: staffUid || '', status: 'ASSIGNED' }),
+        body: JSON.stringify({ assignedTo: team, assignedToUid: staffUid || '' }),
       });
+      if (!res.ok) throw new Error('Assign failed');
     } catch {
       setRequests((prev) => prev.map((r) => r.id === id ? { ...r, assignedTo: team, assignedToUid: staffUid || '', status: 'ASSIGNED' as Status, updatedAt: new Date().toISOString() } : r));
     }
