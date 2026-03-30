@@ -1,7 +1,7 @@
 export type Domain = 'apartment';
 export type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type Status = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED';
-export type UserRole = 'admin' | 'tenant';
+export type UserRole = 'admin' | 'tenant' | 'staff';
 
 export interface AppUser {
   uid: string;
@@ -10,6 +10,7 @@ export interface AppUser {
   role: UserRole;
   unit?: string;
   phone?: string;
+  specialization?: string;
   createdAt: string;
   createdBy?: string;
 }
@@ -25,6 +26,7 @@ export interface ServiceRequest {
   domain: Domain;
   timestamp: string;
   assignedTo?: string;
+  assignedToUid?: string;
   tenantUid?: string;
   tenantName?: string;
   tenantUnit?: string;

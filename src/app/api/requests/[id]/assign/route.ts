@@ -7,13 +7,13 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { assignedTo } = body;
+    const { assignedTo, assignedToUid } = body;
 
     if (!assignedTo) {
       return NextResponse.json({ error: 'assignedTo is required' }, { status: 400 });
     }
 
-    const updated = await store.assign(params.id, assignedTo);
+    const updated = await store.assign(params.id, assignedTo, assignedToUid);
     if (!updated) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }

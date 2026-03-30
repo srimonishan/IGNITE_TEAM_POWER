@@ -52,14 +52,19 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get('category') || undefined;
   const priority = searchParams.get('priority') || undefined;
   const tenantUid = searchParams.get('tenantUid') || undefined;
+  const assignedToUid = searchParams.get('assignedToUid') || undefined;
 
-  const requests = await store.getAll({
+  let requests = await store.getAll({
     status: status as any,
     category,
     priority: priority as any,
     domain: 'apartment',
     tenantUid,
   });
+
+  if (assignedToUid) {
+    requests = requests.filter((r) => r.assignedToUid === assignedToUid);
+  }
 
   return NextResponse.json({ requests });
 }

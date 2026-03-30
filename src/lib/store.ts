@@ -69,12 +69,12 @@ export const store = {
     return mem;
   },
 
-  async assign(id: string, assignedTo: string): Promise<ServiceRequest | undefined> {
+  async assign(id: string, assignedTo: string, assignedToUid?: string): Promise<ServiceRequest | undefined> {
     const now = new Date().toISOString();
     const mem = memRequests.find((r) => r.id === id);
-    if (mem) { mem.assignedTo = assignedTo; mem.status = 'ASSIGNED'; mem.updatedAt = now; }
+    if (mem) { mem.assignedTo = assignedTo; mem.assignedToUid = assignedToUid; mem.status = 'ASSIGNED'; mem.updatedAt = now; }
     try {
-      await updateDoc(doc(db, REQ_COL, id), { assignedTo, status: 'ASSIGNED', updatedAt: now });
+      await updateDoc(doc(db, REQ_COL, id), { assignedTo, assignedToUid: assignedToUid || '', status: 'ASSIGNED', updatedAt: now });
       const snap = await getDoc(doc(db, REQ_COL, id));
       if (snap.exists()) return { ...snap.data(), id: snap.id } as ServiceRequest;
     } catch { return mem; }

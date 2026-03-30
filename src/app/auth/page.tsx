@@ -8,11 +8,12 @@ import { auth, googleProvider } from '@/lib/firebase';
 export default function AuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [role, setRole] = useState<'admin' | 'tenant'>('tenant');
+  const [role, setRole] = useState<'admin' | 'tenant' | 'staff'>('tenant');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('');
+  const [specialization, setSpecialization] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -25,18 +26,18 @@ export default function AuthPage() {
 
     if (found) {
       localStorage.setItem('rhq-user', JSON.stringify(found));
-      router.push(found.role === 'admin' ? '/dashboard' : '/portal');
+      router.push(found.role === 'admin' ? '/dashboard' : found.role === 'staff' ? '/staff' : '/portal');
       return;
     }
 
-    const newUser = { uid, name: userName, email: userEmail, role, unit, phone: '', createdBy: '' };
+    const newUser = { uid, name: userName, email: userEmail, role, unit, phone: '', specialization, createdBy: '' };
     await fetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newUser),
     }).catch(() => {});
     localStorage.setItem('rhq-user', JSON.stringify(newUser));
-    router.push(role === 'admin' ? '/dashboard' : '/portal');
+    router.push(role === 'admin' ? '/dashboard' : role === 'staff' ? '/staff' : '/portal');
   };
 
   const handleGoogle = async () => {
@@ -127,14 +128,14 @@ export default function AuthPage() {
           {mode === 'signup' && (
             <div className="mb-6">
               <label className="block text-xs font-medium text-zinc-400 mb-2">I am a</label>
-              <div className="grid grid-cols-2 gap-3">
-                {([['admin', 'Property Admin', 'Manage all requests and tenants'], ['tenant', 'Tenant / Resident', 'Submit and track service requests']] as const).map(([r, title, desc]) => (
-                  <button key={r} type="button" onClick={() => setRole(r)} className={`p-4 rounded-xl text-left transition ${role === r ? 'ring-2 ring-indigo-500 bg-indigo-500/10' : 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700'}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-3 h-3 rounded-full ${role === r ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
-                      <span className="text-sm font-semibold">{title}</span>
+              <div className="grid grid-cols-3 gap-2">
+                {([['admin', 'Admin', 'Manage operations'], ['tenant', 'Tenant', 'Report issues'], ['staff', 'Staff', 'Handle repairs']] as const).map(([r, title, desc]) => (
+                  <button key={r} type="button" onClick={() => setRole(r)} className={`p-3 rounded-xl text-left transition ${role === r ? 'ring-2 ring-indigo-500 bg-indigo-500/10' : 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700'}`}>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <div className={`w-2.5 h-2.5 rounded-full ${role === r ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
+                      <span className="text-xs font-semibold">{title}</span>
                     </div>
-                    <p className="text-[11px] text-zinc-500 ml-5">{desc}</p>
+                    <p className="text-[10px] text-zinc-500 ml-4">{desc}</p>
                   </button>
                 ))}
               </div>
@@ -167,6 +168,21 @@ export default function AuthPage() {
                   <div>
                     <label className="block text-xs font-medium text-zinc-400 mb-1.5">Apartment Unit</label>
                     <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. A-301, B-105" className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 text-sm" />
+                  </div>
+                )}
+                {role === 'staff' && (
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5">Specialization</label>
+                    <select value={specialization} onChange={(e) => setSpecialization(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-indigo-500/50 text-sm">
+                      <option value="">Select specialization</option>
+                      <option value="Electrician">Electrician</option>
+                      <option value="Plumber">Plumber</option>
+                      <option value="HVAC Technician">HVAC Technician</option>
+                      <option value="General Maintenance">General Maintenance</option>
+                      <option value="Security">Security</option>
+                      <option value="Cleaning">Cleaning</option>
+                      <option value="Elevator Technician">Elevator Technician</option>
+                    </select>
                   </div>
                 )}
               </>

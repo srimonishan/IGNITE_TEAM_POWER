@@ -32,8 +32,6 @@ const STATUS_LABEL: Record<Status, string> = {
   COMPLETED: 'Completed',
 };
 
-const TEAMS = ['Maintenance', 'Plumbing', 'Electrical', 'HVAC', 'Security', 'Cleaning'];
-
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (seconds < 60) return 'just now';
@@ -66,8 +64,9 @@ export default function DashboardPage() {
 
   // Users state
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [staffMembers, setStaffMembers] = useState<AppUser[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'tenant' as UserRole, unit: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'tenant' as UserRole, unit: '', specialization: '' });
   const [userLoading, setUserLoading] = useState(false);
   const [userError, setUserError] = useState('');
 
@@ -117,17 +116,27 @@ export default function DashboardPage() {
     } catch {}
   }, []);
 
+  const loadStaff = useCallback(async () => {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (data.users) setStaffMembers(data.users.filter((u: any) => u.role === 'staff'));
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!mounted) return;
     loadRequests();
     loadStats();
     loadUsers();
+    loadStaff();
     const interval = setInterval(() => {
       loadRequests();
       loadStats();
+      loadStaff();
     }, 5000);
     return () => clearInterval(interval);
-  }, [mounted, loadRequests, loadStats, loadUsers]);
+  }, [mounted, loadRequests, loadStats, loadUsers, loadStaff]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -160,18 +169,18 @@ export default function DashboardPage() {
     loadStats();
   };
 
-  const handleAssign = async (id: string, team: string) => {
+  const handleAssign = async (id: string, team: string, staffUid?: string) => {
     try {
       await fetch(`/api/requests/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedTo: team, status: 'ASSIGNED' }),
+        body: JSON.stringify({ assignedTo: team, assignedToUid: staffUid || '', status: 'ASSIGNED' }),
       });
     } catch {
-      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, assignedTo: team, status: 'ASSIGNED' as Status, updatedAt: new Date().toISOString() } : r));
+      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, assignedTo: team, assignedToUid: staffUid || '', status: 'ASSIGNED' as Status, updatedAt: new Date().toISOString() } : r));
     }
     if (selectedRequest?.id === id) {
-      setSelectedRequest((prev) => prev ? { ...prev, assignedTo: team, status: 'ASSIGNED' as Status } : prev);
+      setSelectedRequest((prev) => prev ? { ...prev, assignedTo: team, assignedToUid: staffUid || '', status: 'ASSIGNED' as Status } : prev);
     }
     loadRequests();
     loadStats();
@@ -219,6 +228,7 @@ export default function DashboardPage() {
           email: newUser.email,
           role: newUser.role,
           unit: newUser.role === 'tenant' ? newUser.unit : '',
+          specialization: newUser.role === 'staff' ? newUser.specialization : '',
           createdBy: adminUser?.uid || '',
         }),
       });
@@ -232,7 +242,7 @@ export default function DashboardPage() {
         await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
       }
 
-      setNewUser({ name: '', email: '', password: '', role: 'tenant', unit: '' });
+      setNewUser({ name: '', email: '', password: '', role: 'tenant', unit: '', specialization: '' });
       setShowAddUser(false);
       loadUsers();
     } catch (err: any) {
@@ -619,9 +629,29 @@ export default function DashboardPage() {
                       className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-indigo-500/50 text-sm"
                     >
                       <option value="tenant">Tenant</option>
+                      <option value="staff">Staff</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>
+                  {newUser.role === 'staff' && (
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-400 mb-1.5">Specialization</label>
+                      <select
+                        value={newUser.specialization}
+                        onChange={(e) => setNewUser({ ...newUser, specialization: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-indigo-500/50 text-sm"
+                      >
+                        <option value="">Select specialization</option>
+                        <option value="Electrician">Electrician</option>
+                        <option value="Plumber">Plumber</option>
+                        <option value="HVAC Technician">HVAC Technician</option>
+                        <option value="General Maintenance">General Maintenance</option>
+                        <option value="Security">Security</option>
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Elevator Technician">Elevator Technician</option>
+                      </select>
+                    </div>
+                  )}
                   {newUser.role === 'tenant' && (
                     <div>
                       <label className="block text-xs font-medium text-zinc-400 mb-1.5">Unit</label>
@@ -686,10 +716,17 @@ export default function DashboardPage() {
                           </td>
                           <td className="px-5 py-4">
                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                              u.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              u.role === 'admin'
+                                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                : u.role === 'staff'
+                                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             }`}>
                               {u.role}
                             </span>
+                            {u.role === 'staff' && u.specialization && (
+                              <span className="ml-2 text-[10px] text-zinc-500">{u.specialization}</span>
+                            )}
                           </td>
                           <td className="px-5 py-4 hidden md:table-cell">
                             <span className="text-sm text-zinc-400">{u.unit || '—'}</span>
@@ -944,24 +981,37 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Assign Actions */}
+              {/* Assign to Staff */}
               <div>
-                <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Assign to Team</h4>
-                <div className="flex flex-wrap gap-2">
-                  {TEAMS.map((team) => (
-                    <button
-                      key={team}
-                      onClick={() => handleAssign(selectedRequest.id, team)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        selectedRequest.assignedTo === team
-                          ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      {team}
-                    </button>
-                  ))}
-                </div>
+                <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">Assign to Staff</h4>
+                {staffMembers.length === 0 ? (
+                  <p className="text-xs text-zinc-600">No staff members registered yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {staffMembers.map((staff) => (
+                      <button
+                        key={staff.uid}
+                        onClick={() => handleAssign(selectedRequest.id, `${staff.name} (${staff.specialization || 'General'})`, staff.uid)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition ${
+                          selectedRequest.assignedToUid === staff.uid
+                            ? 'bg-indigo-600/20 border border-indigo-500/30'
+                            : 'bg-zinc-800/50 hover:bg-zinc-800 border border-transparent'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 text-xs font-bold flex-shrink-0">
+                          {staff.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{staff.name}</p>
+                          <p className="text-[10px] text-zinc-500">{staff.specialization || 'General Maintenance'}</p>
+                        </div>
+                        {selectedRequest.assignedToUid === staff.uid && (
+                          <svg className="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
