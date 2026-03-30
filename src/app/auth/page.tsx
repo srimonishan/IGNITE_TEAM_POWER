@@ -18,7 +18,11 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    const t = localStorage.getItem('rhq-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  }, []);
 
   const saveAndRedirect = async (uid: string, userName: string, userEmail: string, photo?: string | null) => {
     const existing = await fetch(`/api/users`).then(r => r.json()).catch(() => ({ users: [] }));
@@ -101,13 +105,8 @@ export default function AuthPage() {
             ))}
           </div>
         </div>
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="flex -space-x-2">
-            {['A','B','C','D'].map((l) => (
-              <div key={l} className="w-8 h-8 rounded-full border-2 border-white/20 bg-white/10 flex items-center justify-center text-white text-xs font-semibold backdrop-blur">{l}</div>
-            ))}
-          </div>
-          <p className="text-sm text-white/60">Managing 500+ apartment units</p>
+        <div className="relative z-10">
+          <p className="text-sm text-white/60">Smart maintenance for modern apartments</p>
         </div>
       </div>
 
@@ -128,14 +127,14 @@ export default function AuthPage() {
           {mode === 'signup' && (
             <div className="mb-6">
               <label className="block text-xs font-medium text-zinc-400 mb-2">I am a</label>
-              <div className="grid grid-cols-3 gap-2">
-                {([['admin', 'Admin', 'Manage operations'], ['tenant', 'Tenant', 'Report issues'], ['staff', 'Staff', 'Handle repairs']] as const).map(([r, title, desc]) => (
-                  <button key={r} type="button" onClick={() => setRole(r)} className={`p-3 rounded-xl text-left transition ${role === r ? 'ring-2 ring-indigo-500 bg-indigo-500/10' : 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700'}`}>
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <div className={`w-2.5 h-2.5 rounded-full ${role === r ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
-                      <span className="text-xs font-semibold">{title}</span>
+              <div className="grid grid-cols-2 gap-3">
+                {([['admin', 'Property Admin', 'Manage requests, staff, and operations'], ['tenant', 'Resident', 'Submit and track service requests']] as const).map(([r, title, desc]) => (
+                  <button key={r} type="button" onClick={() => setRole(r)} className={`p-4 rounded-xl text-left transition ${role === r ? 'ring-2 ring-indigo-500 bg-indigo-500/10' : 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`w-3 h-3 rounded-full ${role === r ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
+                      <span className="text-sm font-semibold">{title}</span>
                     </div>
-                    <p className="text-[10px] text-zinc-500 ml-4">{desc}</p>
+                    <p className="text-[11px] text-zinc-500 ml-5">{desc}</p>
                   </button>
                 ))}
               </div>

@@ -158,6 +158,7 @@ function AnalysisPanel({
 export default function TenantPortal() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState('dark');
   const [user, setUser] = useState<StoredUser | null>(null);
   const [activeTab, setActiveTab] = useState<'submit' | 'requests'>('submit');
   const [submitMode, setSubmitMode] = useState<'form' | 'chat'>('form');
@@ -184,6 +185,9 @@ export default function TenantPortal() {
 
   useEffect(() => {
     setMounted(true);
+    const t = localStorage.getItem('rhq-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    setTheme(t);
     const stored = localStorage.getItem('rhq-user');
     if (!stored) {
       router.push('/auth');
@@ -371,6 +375,13 @@ export default function TenantPortal() {
                 </span>
               )}
             </div>
+            <button onClick={() => { const next = theme === 'dark' ? 'light' : 'dark'; setTheme(next); localStorage.setItem('rhq-theme', next); document.documentElement.setAttribute('data-theme', next); }} className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition" aria-label="Toggle theme">
+              {theme === 'dark' ? (
+                <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              ) : (
+                <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+              )}
+            </button>
             <button
               onClick={handleSignOut}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-red-400 hover:bg-red-500/5 border border-zinc-800 hover:border-red-500/20 transition"
@@ -460,6 +471,18 @@ export default function TenantPortal() {
                         className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 text-sm transition"
                       />
                     </div>
+
+                <div className="mt-4">
+                  <label className="block text-xs font-medium text-zinc-400 mb-2">Select Building</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {['A', 'B', 'C', 'D', 'E'].map(b => (
+                      <button key={b} type="button" onClick={() => setLocation(prev => `Block ${b}, ${prev.includes('Floor') ? prev.split(', ').slice(1).join(', ') : prev}`)} className={`p-3 rounded-xl text-center transition ${location.includes(`Block ${b}`) ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400' : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}>
+                        <div className="text-lg font-bold">{b}</div>
+                        <div className="text-[9px]">Block {b}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
                       <svg className="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -752,6 +775,32 @@ export default function TenantPortal() {
                 ))}
               </div>
             )}
+
+              {/* Hotline Contacts */}
+              <div className="mt-8 card p-5">
+                <h3 className="text-sm font-semibold mb-4">Emergency Hotline Contacts</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { name: 'Emergency Services', number: '911', desc: 'Fire, medical, police' },
+                    { name: 'Building Management', number: '(555) 100-2000', desc: '24/7 property office' },
+                    { name: 'Maintenance Hotline', number: '(555) 100-2001', desc: 'Urgent repairs' },
+                    { name: 'Security Desk', number: '(555) 100-2002', desc: 'Security concerns' },
+                    { name: 'Water Emergency', number: '(555) 100-2003', desc: 'Flooding, pipe burst' },
+                    { name: 'Elevator Emergency', number: '(555) 100-2004', desc: 'Stuck elevator' },
+                  ].map(h => (
+                    <div key={h.name} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900 border border-zinc-800">
+                      <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold">{h.name}</p>
+                        <p className="text-[11px] text-indigo-400 font-medium">{h.number}</p>
+                        <p className="text-[10px] text-zinc-600">{h.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
           </div>
         )}
       </main>

@@ -33,12 +33,16 @@ export default function SubmitPage() {
   const [desc, setDesc] = useState('');
   const [loc, setLoc] = useState('');
   const [chat, setChat] = useState('');
+  const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
     const u = localStorage.getItem('rhq-user');
     if (!u) { router.push('/auth'); return; }
     try { const parsed = JSON.parse(u); setUser(parsed); setLoc(parsed.unit || ''); } catch { router.push('/auth'); }
     setMounted(true);
+    const t = localStorage.getItem('rhq-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    setTheme(t);
   }, [router]);
 
   const submitForm = async (e: React.FormEvent) => {
@@ -89,6 +93,13 @@ export default function SubmitPage() {
             {user && <span className="text-xs text-zinc-500">{user.name}{user.unit ? ` - ${user.unit}` : ''}</span>}
             <button onClick={() => router.push(user?.role === 'admin' ? '/dashboard' : '/portal')} className="text-sm px-4 py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition text-zinc-300">
               {user?.role === 'admin' ? 'Dashboard' : 'My Requests'}
+            </button>
+            <button onClick={() => { const next = theme === 'dark' ? 'light' : 'dark'; setTheme(next); localStorage.setItem('rhq-theme', next); document.documentElement.setAttribute('data-theme', next); }} className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition" aria-label="Toggle theme">
+              {theme === 'dark' ? (
+                <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              ) : (
+                <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+              )}
             </button>
             <button onClick={async () => { try { await signOut(auth); } catch {} localStorage.removeItem('rhq-user'); router.push('/'); }} className="text-xs px-3 py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 transition text-zinc-400">Sign out</button>
           </div>

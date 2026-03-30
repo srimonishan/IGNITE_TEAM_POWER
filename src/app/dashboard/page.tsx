@@ -52,6 +52,7 @@ interface ChatMessage {
 export default function DashboardPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState('dark');
   const [adminUser, setAdminUser] = useState<AppUser | null>(null);
   const [tab, setTab] = useState<Tab>('dashboard');
 
@@ -90,6 +91,9 @@ export default function DashboardPage() {
       router.push('/auth');
     }
     setMounted(true);
+    const t = localStorage.getItem('rhq-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    setTheme(t);
   }, [router]);
 
   const loadRequests = useCallback(async () => {
@@ -426,6 +430,13 @@ export default function DashboardPage() {
                 {adminUser?.name?.[0]?.toUpperCase() || 'A'}
               </div>
               <span className="hidden md:block text-sm text-zinc-400">{adminUser?.name || 'Admin'}</span>
+              <button onClick={() => { const next = theme === 'dark' ? 'light' : 'dark'; setTheme(next); localStorage.setItem('rhq-theme', next); document.documentElement.setAttribute('data-theme', next); }} className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition" aria-label="Toggle theme">
+                {theme === 'dark' ? (
+                  <svg className="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                )}
+              </button>
               <button onClick={handleSignOut} className="ml-1 p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition" title="Sign out">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               </button>
@@ -494,6 +505,56 @@ export default function DashboardPage() {
                       <span className="text-xs text-red-400/50">{timeAgo(a.createdAt)}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Analytics Charts */}
+            {tab === 'dashboard' && stats && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                {/* Category Distribution */}
+                <div className="card p-5">
+                  <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Requests by Category</h3>
+                  <div className="space-y-2.5">
+                    {(() => {
+                      const cats: Record<string, number> = {};
+                      requests.forEach(r => { cats[r.category] = (cats[r.category] || 0) + 1; });
+                      const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 6);
+                      const max = Math.max(...sorted.map(s => s[1]), 1);
+                      return sorted.map(([cat, count]) => (
+                        <div key={cat} className="flex items-center gap-3">
+                          <span className="text-[10px] text-zinc-500 w-20 truncate">{cat.replace(/_/g, ' ')}</span>
+                          <div className="flex-1 h-5 bg-zinc-900 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-500" style={{ width: `${(count / max) * 100}%` }} />
+                          </div>
+                          <span className="text-xs font-bold text-zinc-400 w-6 text-right">{count}</span>
+                        </div>
+                      ));
+                    })()}
+                    {Object.keys(requests.reduce((a, r) => ({ ...a, [r.category]: 1 }), {})).length === 0 && <p className="text-xs text-zinc-600">No data yet</p>}
+                  </div>
+                </div>
+                {/* Priority Distribution */}
+                <div className="card p-5">
+                  <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Priority Distribution</h3>
+                  <div className="flex items-end justify-center gap-6 h-32">
+                    {[
+                      { label: 'Critical', count: stats.byPriority.CRITICAL, color: 'bg-red-500', textColor: 'text-red-400' },
+                      { label: 'High', count: stats.byPriority.HIGH, color: 'bg-orange-500', textColor: 'text-orange-400' },
+                      { label: 'Medium', count: stats.byPriority.MEDIUM, color: 'bg-yellow-500', textColor: 'text-yellow-400' },
+                      { label: 'Low', count: stats.byPriority.LOW, color: 'bg-emerald-500', textColor: 'text-emerald-400' },
+                    ].map(p => {
+                      const maxP = Math.max(stats.byPriority.CRITICAL, stats.byPriority.HIGH, stats.byPriority.MEDIUM, stats.byPriority.LOW, 1);
+                      const height = Math.max((p.count / maxP) * 100, 8);
+                      return (
+                        <div key={p.label} className="flex flex-col items-center gap-1.5">
+                          <span className={`text-xs font-bold ${p.textColor}`}>{p.count}</span>
+                          <div className={`w-10 ${p.color} rounded-t-lg transition-all duration-500`} style={{ height: `${height}%`, minHeight: '8px' }} />
+                          <span className="text-[9px] text-zinc-600 font-medium">{p.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
