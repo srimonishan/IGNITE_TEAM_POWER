@@ -467,17 +467,18 @@ export default function DashboardPage() {
             {/* Stats Row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Total Requests', value: stats?.total ?? 0, icon: '📋', accent: 'from-zinc-800 to-zinc-900' },
-                { label: 'Critical', value: stats?.criticalCount ?? 0, icon: '🔴', accent: 'from-red-950/50 to-zinc-900' },
-                { label: 'In Progress', value: stats?.byStatus.IN_PROGRESS ?? 0, icon: '⚡', accent: 'from-amber-950/30 to-zinc-900' },
-                { label: 'Completed', value: stats?.byStatus.COMPLETED ?? 0, icon: '✅', accent: 'from-emerald-950/30 to-zinc-900' },
+                { label: 'Total Requests', value: stats?.total ?? 0, change: requests.filter(r => { const h = (Date.now() - new Date(r.createdAt).getTime()) / 3600000; return h < 24; }).length, changeLabel: 'today', iconColor: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
+                { label: 'Critical', value: stats?.criticalCount ?? 0, change: null, changeLabel: 'active', iconColor: 'text-red-400 bg-red-500/10 border-red-500/20', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg> },
+                { label: 'In Progress', value: stats?.byStatus.IN_PROGRESS ?? 0, change: stats?.byStatus.ASSIGNED ?? 0, changeLabel: 'assigned', iconColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> },
+                { label: 'Completed', value: stats?.byStatus.COMPLETED ?? 0, change: stats?.total ? Math.round(((stats?.byStatus.COMPLETED ?? 0) / stats.total) * 100) : 0, changeLabel: '% rate', iconColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
               ].map((s) => (
-                <div key={s.label} className={`rounded-xl p-5 bg-gradient-to-br ${s.accent} border border-zinc-800/80`}>
+                <div key={s.label} className="rounded-xl p-5 bg-zinc-900/50 border border-zinc-800/80 hover:border-zinc-700/80 transition group">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">{s.label}</span>
-                    <span className="text-lg">{s.icon}</span>
+                    <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{s.label}</span>
+                    <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${s.iconColor}`}>{s.icon}</div>
                   </div>
-                  <p className="text-3xl font-bold">{s.value}</p>
+                  <p className="text-3xl font-bold mb-1">{s.value}</p>
+                  {s.change !== null && <p className="text-[11px] text-zinc-500"><span className="text-indigo-400 font-semibold">+{s.change}</span> {s.changeLabel}</p>}
                 </div>
               ))}
             </div>
@@ -510,51 +511,175 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Analytics Charts */}
-            {tab === 'dashboard' && stats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                {/* Category Distribution */}
-                <div className="card p-5">
-                  <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Requests by Category</h3>
-                  <div className="space-y-2.5">
-                    {(() => {
-                      const cats: Record<string, number> = {};
-                      requests.forEach(r => { cats[r.category] = (cats[r.category] || 0) + 1; });
-                      const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 6);
-                      const max = Math.max(...sorted.map(s => s[1]), 1);
-                      return sorted.map(([cat, count]) => (
-                        <div key={cat} className="flex items-center gap-3">
-                          <span className="text-[10px] text-zinc-500 w-20 truncate">{cat.replace(/_/g, ' ')}</span>
-                          <div className="flex-1 h-5 bg-zinc-900 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-500" style={{ width: `${(count / max) * 100}%` }} />
-                          </div>
-                          <span className="text-xs font-bold text-zinc-400 w-6 text-right">{count}</span>
+            {/* Analytics Dashboard */}
+            {stats && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Status Donut Chart */}
+                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Status Overview</h3>
+                    <div className="flex items-center gap-6">
+                      <div className="relative w-28 h-28 flex-shrink-0">
+                        <svg viewBox="0 0 36 36" className="w-28 h-28 -rotate-90">
+                          {(() => {
+                            const t = stats.total || 1;
+                            const slices = [
+                              { val: stats.byStatus.NEW, color: '#3b82f6' },
+                              { val: stats.byStatus.ASSIGNED, color: '#8b5cf6' },
+                              { val: stats.byStatus.IN_PROGRESS, color: '#f59e0b' },
+                              { val: stats.byStatus.COMPLETED, color: '#10b981' },
+                            ];
+                            let offset = 0;
+                            return slices.map((s, i) => {
+                              const pct = (s.val / t) * 100;
+                              const el = <circle key={i} cx="18" cy="18" r="15.9" fill="none" stroke={s.color} strokeWidth="3.5" strokeDasharray={`${pct} ${100 - pct}`} strokeDashoffset={`${-offset}`} strokeLinecap="round" />;
+                              offset += pct;
+                              return el;
+                            });
+                          })()}
+                          <circle cx="18" cy="18" r="12" fill="transparent" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-2xl font-bold">{stats.total}</span>
+                          <span className="text-[9px] text-zinc-500">Total</span>
                         </div>
-                      ));
-                    })()}
-                    {Object.keys(requests.reduce((a, r) => ({ ...a, [r.category]: 1 }), {})).length === 0 && <p className="text-xs text-zinc-600">No data yet</p>}
+                      </div>
+                      <div className="space-y-2.5 flex-1">
+                        {[
+                          { l: 'New', v: stats.byStatus.NEW, c: 'bg-blue-500' },
+                          { l: 'Assigned', v: stats.byStatus.ASSIGNED, c: 'bg-violet-500' },
+                          { l: 'In Progress', v: stats.byStatus.IN_PROGRESS, c: 'bg-amber-500' },
+                          { l: 'Completed', v: stats.byStatus.COMPLETED, c: 'bg-emerald-500' },
+                        ].map(s => (
+                          <div key={s.l} className="flex items-center gap-2">
+                            <div className={`w-2.5 h-2.5 rounded-sm ${s.c}`} />
+                            <span className="text-[11px] text-zinc-500 flex-1">{s.l}</span>
+                            <span className="text-xs font-bold">{s.v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Priority Bar Chart */}
+                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Priority Distribution</h3>
+                    <div className="flex items-end gap-3 h-36">
+                      {[
+                        { l: 'Critical', v: stats.byPriority.CRITICAL, grad: 'from-red-600 to-red-400', text: 'text-red-400' },
+                        { l: 'High', v: stats.byPriority.HIGH, grad: 'from-orange-600 to-orange-400', text: 'text-orange-400' },
+                        { l: 'Medium', v: stats.byPriority.MEDIUM, grad: 'from-yellow-600 to-yellow-400', text: 'text-yellow-400' },
+                        { l: 'Low', v: stats.byPriority.LOW, grad: 'from-emerald-600 to-emerald-400', text: 'text-emerald-400' },
+                      ].map(p => {
+                        const maxP = Math.max(stats.byPriority.CRITICAL, stats.byPriority.HIGH, stats.byPriority.MEDIUM, stats.byPriority.LOW, 1);
+                        const pct = Math.max((p.v / maxP) * 100, 6);
+                        return (
+                          <div key={p.l} className="flex-1 flex flex-col items-center gap-1.5">
+                            <span className={`text-sm font-bold ${p.text}`}>{p.v}</span>
+                            <div className="w-full rounded-t-lg overflow-hidden bg-zinc-800" style={{ height: '100px' }}>
+                              <div className={`w-full bg-gradient-to-t ${p.grad} rounded-t-lg transition-all duration-700`} style={{ height: `${pct}%`, marginTop: `${100 - pct}%` }} />
+                            </div>
+                            <span className="text-[9px] text-zinc-600 font-medium">{p.l}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Resolution Rate + Stats */}
+                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Performance</h3>
+                    {/* Resolution Rate Gauge */}
+                    <div className="flex flex-col items-center mb-4">
+                      <div className="relative w-24 h-12 overflow-hidden">
+                        <svg viewBox="0 0 100 50" className="w-24 h-12">
+                          <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="#27272a" strokeWidth="8" strokeLinecap="round" />
+                          <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="url(#gauge-grad)" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${((stats.byStatus.COMPLETED / (stats.total || 1)) * 141.3)} 141.3`} />
+                          <defs><linearGradient id="gauge-grad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#6366f1" /><stop offset="100%" stopColor="#10b981" /></linearGradient></defs>
+                        </svg>
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+                          <span className="text-lg font-bold">{stats.total ? Math.round((stats.byStatus.COMPLETED / stats.total) * 100) : 0}%</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-zinc-500 mt-1">Resolution Rate</span>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-zinc-800/50">
+                        <span className="text-[11px] text-zinc-500">Avg. AI Confidence</span>
+                        <span className="text-sm font-bold text-indigo-400">{requests.length ? Math.round(requests.reduce((a, r) => a + (r.aiAnalysis?.confidence || 0), 0) / requests.length) : 0}%</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-zinc-800/50">
+                        <span className="text-[11px] text-zinc-500">Active Staff</span>
+                        <span className="text-sm font-bold text-amber-400">{staffMembers.length}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-zinc-800/50">
+                        <span className="text-[11px] text-zinc-500">Open Requests</span>
+                        <span className="text-sm font-bold text-blue-400">{(stats.byStatus.NEW || 0) + (stats.byStatus.ASSIGNED || 0) + (stats.byStatus.IN_PROGRESS || 0)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                {/* Priority Distribution */}
-                <div className="card p-5">
-                  <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Priority Distribution</h3>
-                  <div className="flex items-end justify-center gap-6 h-32">
-                    {[
-                      { label: 'Critical', count: stats.byPriority.CRITICAL, color: 'bg-red-500', textColor: 'text-red-400' },
-                      { label: 'High', count: stats.byPriority.HIGH, color: 'bg-orange-500', textColor: 'text-orange-400' },
-                      { label: 'Medium', count: stats.byPriority.MEDIUM, color: 'bg-yellow-500', textColor: 'text-yellow-400' },
-                      { label: 'Low', count: stats.byPriority.LOW, color: 'bg-emerald-500', textColor: 'text-emerald-400' },
-                    ].map(p => {
-                      const maxP = Math.max(stats.byPriority.CRITICAL, stats.byPriority.HIGH, stats.byPriority.MEDIUM, stats.byPriority.LOW, 1);
-                      const height = Math.max((p.count / maxP) * 100, 8);
-                      return (
-                        <div key={p.label} className="flex flex-col items-center gap-1.5">
-                          <span className={`text-xs font-bold ${p.textColor}`}>{p.count}</span>
-                          <div className={`w-10 ${p.color} rounded-t-lg transition-all duration-500`} style={{ height: `${height}%`, minHeight: '8px' }} />
-                          <span className="text-[9px] text-zinc-600 font-medium">{p.label}</span>
-                        </div>
-                      );
-                    })}
+
+                {/* Row 2: Category + Weekly Trend */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Category Distribution */}
+                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Requests by Category</h3>
+                    <div className="space-y-2">
+                      {(() => {
+                        const cats: Record<string, number> = {};
+                        requests.forEach(r => { cats[r.category] = (cats[r.category] || 0) + 1; });
+                        const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 7);
+                        const max = Math.max(...sorted.map(s => s[1]), 1);
+                        const colors = ['from-indigo-600 to-indigo-400', 'from-purple-600 to-purple-400', 'from-blue-600 to-blue-400', 'from-cyan-600 to-cyan-400', 'from-teal-600 to-teal-400', 'from-emerald-600 to-emerald-400', 'from-amber-600 to-amber-400'];
+                        return sorted.length === 0
+                          ? <p className="text-xs text-zinc-600 text-center py-4">No data yet</p>
+                          : sorted.map(([cat, count], i) => (
+                            <div key={cat} className="group">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] text-zinc-400 font-medium">{cat.replace(/_/g, ' ')}</span>
+                                <span className="text-[11px] font-bold text-zinc-300">{count}</span>
+                              </div>
+                              <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                <div className={`h-full bg-gradient-to-r ${colors[i % colors.length]} rounded-full transition-all duration-700`} style={{ width: `${(count / max) * 100}%` }} />
+                              </div>
+                            </div>
+                          ));
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Weekly Activity */}
+                  <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5">
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Weekly Activity</h3>
+                    <div className="flex items-end gap-2 h-32">
+                      {(() => {
+                        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                        const now = new Date();
+                        const dayOfWeek = now.getDay();
+                        const counts = days.map((_, i) => {
+                          const adjustedDay = (i + 1) % 7;
+                          return requests.filter(r => {
+                            const d = new Date(r.createdAt);
+                            return d.getDay() === adjustedDay && (now.getTime() - d.getTime()) < 7 * 24 * 3600 * 1000;
+                          }).length;
+                        });
+                        const maxC = Math.max(...counts, 1);
+                        return days.map((d, i) => {
+                          const pct = Math.max((counts[i] / maxC) * 100, 4);
+                          const isToday = (i + 1) % 7 === dayOfWeek;
+                          return (
+                            <div key={d} className="flex-1 flex flex-col items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-zinc-400">{counts[i]}</span>
+                              <div className="w-full rounded-t-lg overflow-hidden bg-zinc-800" style={{ height: '80px' }}>
+                                <div className={`w-full rounded-t-lg transition-all duration-700 ${isToday ? 'bg-gradient-to-t from-indigo-600 to-indigo-400' : 'bg-gradient-to-t from-zinc-700 to-zinc-600'}`} style={{ height: `${pct}%`, marginTop: `${100 - pct}%` }} />
+                              </div>
+                              <span className={`text-[9px] font-medium ${isToday ? 'text-indigo-400' : 'text-zinc-600'}`}>{d}</span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 </div>
               </div>
