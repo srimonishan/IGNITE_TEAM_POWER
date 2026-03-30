@@ -5,110 +5,84 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  deleteDoc,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { ServiceRequest, Status, Priority, DashboardStats } from './types';
+import { ServiceRequest, Status, Priority, DashboardStats, AppUser, UserRole } from './types';
 
-const COL = 'requests';
+const REQ_COL = 'requests';
+const USR_COL = 'users';
 
-const memoryStore: ServiceRequest[] = [];
-let useMemory = false;
+const memRequests: ServiceRequest[] = [];
+const memUsers: AppUser[] = [];
 
-async function allDocs(domain?: string): Promise<ServiceRequest[]> {
+async function allRequests(domain?: string): Promise<ServiceRequest[]> {
   try {
-    const snap = await getDocs(collection(db, COL));
+    const snap = await getDocs(collection(db, REQ_COL));
     let results = snap.docs.map((d) => ({ ...d.data(), id: d.id }) as ServiceRequest);
     if (domain) results = results.filter((r) => r.domain === domain);
-    return results.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  } catch (err) {
-    console.warn('Firestore unavailable, using in-memory fallback:', err);
-    useMemory = true;
-    let results = [...memoryStore];
+    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch {
+    let results = [...memRequests];
     if (domain) results = results.filter((r) => r.domain === domain);
-    return results.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }
 
 export const store = {
-  async getAll(filters?: {
-    status?: Status;
-    category?: string;
-    priority?: Priority;
-    domain?: string;
-  }): Promise<ServiceRequest[]> {
-    let results = await allDocs(filters?.domain);
+  async getAll(filters?: { status?: Status; category?: string; priority?: Priority; domain?: string; tenantUid?: string }): Promise<ServiceRequest[]> {
+    let results = await allRequests(filters?.domain);
     if (filters?.status) results = results.filter((r) => r.status === filters.status);
     if (filters?.category) results = results.filter((r) => r.category === filters.category);
     if (filters?.priority) results = results.filter((r) => r.priority === filters.priority);
+    if (filters?.tenantUid) results = results.filter((r) => r.tenantUid === filters.tenantUid);
     return results;
   },
 
   async getById(id: string): Promise<ServiceRequest | undefined> {
     try {
-      const snap = await getDoc(doc(db, COL, id));
+      const snap = await getDoc(doc(db, REQ_COL, id));
       if (snap.exists()) return { ...snap.data(), id: snap.id } as ServiceRequest;
     } catch {
-      return memoryStore.find((r) => r.id === id);
+      return memRequests.find((r) => r.id === id);
     }
     return undefined;
   },
 
   async create(request: ServiceRequest): Promise<ServiceRequest> {
-    memoryStore.push(request);
-    try {
-      await setDoc(doc(db, COL, request.id), request);
-    } catch (err) {
-      console.warn('Firestore write failed, data saved in-memory:', err);
-      useMemory = true;
-    }
+    memRequests.push(request);
+    try { await setDoc(doc(db, REQ_COL, request.id), request); } catch {}
     return request;
   },
 
   async updateStatus(id: string, status: Status): Promise<ServiceRequest | undefined> {
     const now = new Date().toISOString();
-    const mem = memoryStore.find((r) => r.id === id);
-    if (mem) {
-      mem.status = status;
-      mem.updatedAt = now;
-    }
+    const mem = memRequests.find((r) => r.id === id);
+    if (mem) { mem.status = status; mem.updatedAt = now; }
     try {
-      await updateDoc(doc(db, COL, id), { status, updatedAt: now });
-      const snap = await getDoc(doc(db, COL, id));
+      await updateDoc(doc(db, REQ_COL, id), { status, updatedAt: now });
+      const snap = await getDoc(doc(db, REQ_COL, id));
       if (snap.exists()) return { ...snap.data(), id: snap.id } as ServiceRequest;
-    } catch {
-      return mem;
-    }
+    } catch { return mem; }
     return mem;
   },
 
   async assign(id: string, assignedTo: string): Promise<ServiceRequest | undefined> {
     const now = new Date().toISOString();
-    const mem = memoryStore.find((r) => r.id === id);
-    if (mem) {
-      mem.assignedTo = assignedTo;
-      mem.status = 'ASSIGNED';
-      mem.updatedAt = now;
-    }
+    const mem = memRequests.find((r) => r.id === id);
+    if (mem) { mem.assignedTo = assignedTo; mem.status = 'ASSIGNED'; mem.updatedAt = now; }
     try {
-      await updateDoc(doc(db, COL, id), {
-        assignedTo,
-        status: 'ASSIGNED',
-        updatedAt: now,
-      });
-      const snap = await getDoc(doc(db, COL, id));
+      await updateDoc(doc(db, REQ_COL, id), { assignedTo, status: 'ASSIGNED', updatedAt: now });
+      const snap = await getDoc(doc(db, REQ_COL, id));
       if (snap.exists()) return { ...snap.data(), id: snap.id } as ServiceRequest;
-    } catch {
-      return mem;
-    }
+    } catch { return mem; }
     return mem;
   },
 
   async getDashboardStats(domain?: string): Promise<DashboardStats> {
-    const requests = await allDocs(domain);
+    const requests = await allRequests(domain);
     return {
       total: requests.length,
       byStatus: {
@@ -123,10 +97,58 @@ export const store = {
         MEDIUM: requests.filter((r) => r.priority === 'MEDIUM').length,
         LOW: requests.filter((r) => r.priority === 'LOW').length,
       },
-      criticalCount: requests.filter(
-        (r) => r.priority === 'CRITICAL' && r.status !== 'COMPLETED'
-      ).length,
+      criticalCount: requests.filter((r) => r.priority === 'CRITICAL' && r.status !== 'COMPLETED').length,
       recentAlerts: requests.filter((r) => r.priority === 'CRITICAL').slice(0, 5),
     };
+  },
+};
+
+export const userStore = {
+  async create(user: AppUser): Promise<AppUser> {
+    memUsers.push(user);
+    try { await setDoc(doc(db, USR_COL, user.uid), user); } catch {}
+    return user;
+  },
+
+  async get(uid: string): Promise<AppUser | undefined> {
+    try {
+      const snap = await getDoc(doc(db, USR_COL, uid));
+      if (snap.exists()) return snap.data() as AppUser;
+    } catch {
+      return memUsers.find((u) => u.uid === uid);
+    }
+    return memUsers.find((u) => u.uid === uid);
+  },
+
+  async getByEmail(email: string): Promise<AppUser | undefined> {
+    try {
+      const q = query(collection(db, USR_COL), where('email', '==', email));
+      const snap = await getDocs(q);
+      if (!snap.empty) return snap.docs[0].data() as AppUser;
+    } catch {
+      return memUsers.find((u) => u.email === email);
+    }
+    return memUsers.find((u) => u.email === email);
+  },
+
+  async getAll(): Promise<AppUser[]> {
+    try {
+      const snap = await getDocs(collection(db, USR_COL));
+      return snap.docs.map((d) => d.data() as AppUser);
+    } catch {
+      return [...memUsers];
+    }
+  },
+
+  async updateRole(uid: string, role: UserRole): Promise<void> {
+    const mem = memUsers.find((u) => u.uid === uid);
+    if (mem) mem.role = role;
+    try { await updateDoc(doc(db, USR_COL, uid), { role }); } catch {}
+  },
+
+  async remove(uid: string): Promise<void> {
+    const idx = memUsers.findIndex((u) => u.uid === uid);
+    if (idx >= 0) memUsers.splice(idx, 1);
+    try { await deleteDoc(doc(db, USR_COL, uid)); } catch {}
   },
 };

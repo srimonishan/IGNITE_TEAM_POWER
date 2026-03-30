@@ -1,6 +1,18 @@
-export type Domain = 'apartment' | 'university' | 'healthcare' | 'mall' | 'corporate';
+export type Domain = 'apartment';
 export type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type Status = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED';
+export type UserRole = 'admin' | 'tenant';
+
+export interface AppUser {
+  uid: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  unit?: string;
+  phone?: string;
+  createdAt: string;
+  createdBy?: string;
+}
 
 export interface ServiceRequest {
   id: string;
@@ -13,6 +25,9 @@ export interface ServiceRequest {
   domain: Domain;
   timestamp: string;
   assignedTo?: string;
+  tenantUid?: string;
+  tenantName?: string;
+  tenantUnit?: string;
   aiAnalysis?: AIAnalysis;
   createdAt: string;
   updatedAt: string;

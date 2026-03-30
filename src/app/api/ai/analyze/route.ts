@@ -1,26 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeRequest } from '@/lib/ai';
-import { Domain } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, description, location, domain } = body;
+    const { title, description, location } = body;
 
-    if (!description || !domain) {
-      return NextResponse.json(
-        { error: 'description and domain are required' },
-        { status: 400 }
-      );
+    if (!description) {
+      return NextResponse.json({ error: 'description required' }, { status: 400 });
     }
 
-    const analysis = await analyzeRequest(
-      description,
-      title || '',
-      location || '',
-      domain as Domain
-    );
-
+    const analysis = await analyzeRequest(description, title || '', location || '');
     return NextResponse.json({ analysis });
   } catch (error) {
     console.error('AI analysis error:', error);

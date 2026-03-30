@@ -1,27 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatToRequest, analyzeRequest } from '@/lib/ai';
-import { Domain, ServiceRequest } from '@/lib/types';
+import { ServiceRequest } from '@/lib/types';
 import { store } from '@/lib/store';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, domain, autoCreate } = body;
+    const { message, autoCreate, tenantUid, tenantName, tenantUnit } = body;
 
-    if (!message || !domain) {
-      return NextResponse.json(
-        { error: 'message and domain are required' },
-        { status: 400 }
-      );
+    if (!message) {
+      return NextResponse.json({ error: 'message required' }, { status: 400 });
     }
 
-    const extracted = await chatToRequest(message, domain as Domain);
-    const aiAnalysis = await analyzeRequest(
-      extracted.description,
-      extracted.title,
-      extracted.location,
-      domain as Domain
-    );
+    const extracted = await chatToRequest(message);
+    const aiAnalysis = await analyzeRequest(extracted.description, extracted.title, extracted.location);
 
     let savedRequest: ServiceRequest | null = null;
 
@@ -34,8 +26,11 @@ export async function POST(request: NextRequest) {
         priority: aiAnalysis.predictedPriority,
         location: extracted.location,
         status: 'NEW',
-        domain: domain as Domain,
+        domain: 'apartment',
         timestamp: new Date().toISOString(),
+        tenantUid: tenantUid || '',
+        tenantName: tenantName || '',
+        tenantUnit: tenantUnit || '',
         aiAnalysis,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -47,13 +42,12 @@ export async function POST(request: NextRequest) {
       request: savedRequest,
       extracted,
       analysis: aiAnalysis,
-      alert:
-        aiAnalysis.predictedPriority === 'CRITICAL'
-          ? { type: 'CRITICAL', message: `CRITICAL: ${extracted.title}` }
-          : null,
+      alert: aiAnalysis.predictedPriority === 'CRITICAL'
+        ? { type: 'CRITICAL', message: `CRITICAL: ${extracted.title}` }
+        : null,
     });
   } catch (error) {
-    console.error('Chat processing error:', error);
+    console.error('Chat error:', error);
     return NextResponse.json({ error: 'Chat processing failed' }, { status: 500 });
   }
 }

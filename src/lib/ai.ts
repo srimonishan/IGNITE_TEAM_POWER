@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AIAnalysis, Domain, Priority } from './types';
+import { AIAnalysis, Priority } from './types';
 import { DOMAIN_CONFIGS } from './domains';
 
 const KEYS = [
@@ -16,23 +16,21 @@ function getGenAI(): GoogleGenerativeAI | null {
   return new GoogleGenerativeAI(key);
 }
 
+const CFG = DOMAIN_CONFIGS.apartment;
+
 export async function analyzeRequest(
   description: string,
   title: string,
   location: string,
-  domain: Domain
 ): Promise<AIAnalysis> {
-  const domainConfig = DOMAIN_CONFIGS[domain];
   const genAI = getGenAI();
-
-  if (!genAI) return fallbackAnalysis(description, title, domain);
+  if (!genAI) return fallbackAnalysis(description, title);
 
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `${CFG.systemPrompt}
 
-    const prompt = `${domainConfig.systemPrompt}
-
-Analyze this service request and respond ONLY with valid JSON (no markdown, no code blocks, no backticks):
+Analyze this apartment service request and respond ONLY with valid JSON (no markdown, no code blocks):
 
 Title: ${title}
 Description: ${description}
@@ -41,85 +39,85 @@ Location: ${location}
 Respond with this exact JSON structure:
 {
   "predictedPriority": "CRITICAL" or "HIGH" or "MEDIUM" or "LOW",
-  "predictedCategory": "one of the categories listed above",
+  "predictedCategory": "one of: ${CFG.categories.join(', ')}",
   "confidence": a number between 0.75 and 0.98,
-  "summary": "brief 1-2 sentence professional summary of the issue",
+  "summary": "brief 1-2 sentence professional summary",
   "resolutionSteps": ["step 1", "step 2", "step 3", "step 4", "step 5"],
   "estimatedTime": "e.g. 30 minutes, 2 hours",
-  "reasoning": "professional explanation of why this priority and category were assigned"
+  "reasoning": "explanation of why this priority and category"
 }`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const p = JSON.parse(jsonMatch[0]);
       return {
-        predictedPriority: validatePriority(parsed.predictedPriority),
-        predictedCategory: parsed.predictedCategory || 'OTHER',
-        confidence: Math.min(0.98, Math.max(0.6, parsed.confidence || 0.85)),
-        summary: parsed.summary || description.substring(0, 100),
-        resolutionSteps: Array.isArray(parsed.resolutionSteps)
-          ? parsed.resolutionSteps
-          : ['Investigate the issue', 'Diagnose root cause', 'Apply fix', 'Verify resolution', 'Close ticket'],
-        estimatedTime: parsed.estimatedTime || '1-2 hours',
-        reasoning: parsed.reasoning || 'Based on AI analysis of request content and domain context',
+        predictedPriority: validatePriority(p.predictedPriority),
+        predictedCategory: p.predictedCategory || 'OTHER',
+        confidence: Math.min(0.98, Math.max(0.6, p.confidence || 0.85)),
+        summary: p.summary || description.substring(0, 100),
+        resolutionSteps: Array.isArray(p.resolutionSteps) ? p.resolutionSteps : defaultSteps(),
+        estimatedTime: p.estimatedTime || '1-2 hours',
+        reasoning: p.reasoning || 'Based on AI analysis',
       };
     }
-
-    throw new Error('Could not parse AI response');
-  } catch (error) {
-    console.error('Gemini API error, falling back to keyword analysis:', error);
-    return fallbackAnalysis(description, title, domain);
+    throw new Error('Parse failed');
+  } catch (err) {
+    console.error('Gemini error, using fallback:', err);
+    return fallbackAnalysis(description, title);
   }
 }
 
 export async function chatToRequest(
   message: string,
-  domain: Domain
 ): Promise<{ title: string; description: string; location: string }> {
-  const domainConfig = DOMAIN_CONFIGS[domain];
   const genAI = getGenAI();
-
-  if (!genAI) {
-    return {
-      title: message.length > 50 ? message.substring(0, 50) + '...' : message,
-      description: message,
-      location: 'Not specified',
-    };
-  }
+  if (!genAI) return { title: message.slice(0, 50), description: message, location: 'Not specified' };
 
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `${CFG.systemPrompt}
 
-    const prompt = `${domainConfig.systemPrompt}
+A tenant described an issue in natural language. Extract structured info. Respond ONLY with valid JSON (no markdown):
 
-A user described an issue in natural language. Extract structured information and respond ONLY with valid JSON (no markdown, no code blocks, no backticks):
+Tenant message: "${message}"
 
-User message: "${message}"
-
-Respond with this exact JSON structure:
 {
-  "title": "concise professional title for the request (max 10 words)",
-  "description": "detailed professional description expanding on the user's message with technical context",
+  "title": "concise title (max 10 words)",
+  "description": "detailed professional description with context",
   "location": "extracted location or 'Not specified'"
 }`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) return JSON.parse(jsonMatch[0]);
+    throw new Error('Parse failed');
+  } catch {
+    return { title: message.slice(0, 50), description: message, location: 'Not specified' };
+  }
+}
 
-    throw new Error('Could not parse chat response');
-  } catch (error) {
-    console.error('Chat parse error:', error);
-    return {
-      title: message.length > 50 ? message.substring(0, 50) + '...' : message,
-      description: message,
-      location: 'Not specified',
-    };
+export async function adminChat(message: string, context?: string): Promise<string> {
+  const genAI = getGenAI();
+  if (!genAI) return 'AI assistant is unavailable. Please check API keys.';
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `${CFG.systemPrompt}
+
+You are the AI assistant for the property management admin. Help them with managing apartment service requests, understanding patterns, drafting responses to tenants, and providing maintenance guidance.
+
+${context ? `Current context (recent requests summary):\n${context}\n` : ''}
+Admin question: "${message}"
+
+Provide a helpful, professional, and actionable response. If relevant, suggest specific actions the admin can take.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch {
+    return 'Sorry, I could not process that request. Please try again.';
   }
 }
 
@@ -128,28 +126,21 @@ function validatePriority(p: string): Priority {
   return valid.includes(p as Priority) ? (p as Priority) : 'MEDIUM';
 }
 
-function fallbackAnalysis(description: string, title: string, domain: Domain): AIAnalysis {
-  const text = `${title} ${description}`.toLowerCase();
-  const domainConfig = DOMAIN_CONFIGS[domain];
+function defaultSteps(): string[] {
+  return ['Log and acknowledge the request', 'Dispatch maintenance team', 'Diagnose the issue on-site', 'Apply corrective fix', 'Verify and close ticket'];
+}
 
-  const criticalKeywords = [
-    'down', 'crash', 'fire', 'flood', 'emergency', 'biohazard', 'breach',
-    'data loss', 'not responding', 'outage', 'explod', 'danger', 'hazard',
-    'critical', 'smoke', 'gas leak', 'power out', 'collapsed',
-  ];
-  const highKeywords = [
-    'slow', 'failing', 'error', 'malfunction', 'leak', 'stuck', 'locked out',
-    'not working', 'degraded', 'intermittent', 'broken', 'damage', 'urgent',
-  ];
-  const mediumKeywords = [
-    'maintenance', 'update', 'replace', 'install', 'configure', 'request',
-    'schedule', 'upgrade', 'noisy', 'flickering',
-  ];
+function fallbackAnalysis(description: string, title: string): AIAnalysis {
+  const text = `${title} ${description}`.toLowerCase();
+
+  const criticalKw = ['flood', 'fire', 'gas leak', 'collapse', 'electr', 'smoke', 'trapped', 'emergency', 'burst pipe', 'power out', 'no water', 'sewage', 'carbon monoxide'];
+  const highKw = ['leak', 'no hot water', 'broken lock', 'no heat', 'no ac', 'elevator stuck', 'ceiling damage', 'mold', 'security breach', 'broken window'];
+  const medKw = ['noise', 'pest', 'roach', 'mouse', 'rat', 'flickering', 'clog', 'drip', 'stain', 'crack', 'parking', 'smell', 'appliance'];
 
   let score = 0;
-  criticalKeywords.forEach((kw) => { if (text.includes(kw)) score += 3; });
-  highKeywords.forEach((kw) => { if (text.includes(kw)) score += 2; });
-  mediumKeywords.forEach((kw) => { if (text.includes(kw)) score += 1; });
+  criticalKw.forEach((k) => { if (text.includes(k)) score += 3; });
+  highKw.forEach((k) => { if (text.includes(k)) score += 2; });
+  medKw.forEach((k) => { if (text.includes(k)) score += 1; });
 
   let priority: Priority;
   if (score >= 6) priority = 'CRITICAL';
@@ -157,66 +148,38 @@ function fallbackAnalysis(description: string, title: string, domain: Domain): A
   else if (score >= 2) priority = 'MEDIUM';
   else priority = 'LOW';
 
-  const category =
-    domainConfig.categories.find((cat) =>
-      text.includes(cat.toLowerCase().replace(/_/g, ' '))
-    ) || detectCategory(text, domainConfig.categories);
+  const catMap: Record<string, string[]> = {
+    PLUMBING: ['water', 'pipe', 'leak', 'drain', 'toilet', 'faucet', 'flood', 'sewage'],
+    ELECTRICAL: ['power', 'light', 'outlet', 'switch', 'circuit', 'voltage', 'wire'],
+    HVAC: ['heat', 'cool', 'ac', 'air condition', 'thermostat', 'ventilation', 'temperature'],
+    ELEVATOR: ['elevator', 'lift', 'stuck'],
+    SECURITY: ['lock', 'camera', 'alarm', 'break-in', 'theft', 'gate', 'intercom'],
+    PEST_CONTROL: ['pest', 'bug', 'roach', 'cockroach', 'mouse', 'rat', 'ant', 'termite'],
+    JANITORIAL: ['clean', 'spill', 'trash', 'garbage', 'sanitation', 'dirty'],
+    NOISE_COMPLAINT: ['noise', 'loud', 'music', 'party', 'barking', 'construction'],
+    PARKING: ['parking', 'garage', 'car', 'vehicle', 'tow'],
+    STRUCTURAL: ['wall', 'ceiling', 'floor', 'crack', 'window', 'door', 'mold'],
+    APPLIANCE: ['refrigerator', 'oven', 'stove', 'dishwasher', 'washer', 'dryer', 'microwave'],
+  };
+
+  let category = 'OTHER';
+  for (const [cat, keywords] of Object.entries(catMap)) {
+    if (keywords.some((k) => text.includes(k))) { category = cat; break; }
+  }
 
   return {
     predictedPriority: priority,
     predictedCategory: category,
     confidence: 0.72,
     summary: description.length > 150 ? description.substring(0, 150) + '...' : description,
-    resolutionSteps: generateFallbackSteps(priority, category),
-    estimatedTime:
-      priority === 'CRITICAL' ? '15-30 minutes'
-        : priority === 'HIGH' ? '1-2 hours'
-        : priority === 'MEDIUM' ? '4-8 hours'
-        : '1-2 days',
-    reasoning: `ML pipeline keyword extraction detected ${score} weighted signals indicating ${priority} urgency. Category inferred via NLP content analysis across ${domainConfig.categories.length} domain-specific classes.`,
+    resolutionSteps: [
+      `Log the ${category.replace(/_/g, ' ').toLowerCase()} request and notify maintenance team`,
+      `Dispatch ${category.replace(/_/g, ' ').toLowerCase()} specialist to Unit/Location`,
+      'Conduct on-site inspection and diagnose root cause',
+      'Execute repair and apply corrective measures',
+      'Verify fix with tenant and close the request',
+    ],
+    estimatedTime: priority === 'CRITICAL' ? '15-30 minutes' : priority === 'HIGH' ? '1-2 hours' : priority === 'MEDIUM' ? '4-8 hours' : '1-2 days',
+    reasoning: `Keyword analysis detected ${score} weighted signals indicating ${priority} urgency. Category classified as ${category} based on content matching across apartment-specific taxonomies.`,
   };
-}
-
-function detectCategory(text: string, categories: string[]): string {
-  const map: Record<string, string[]> = {
-    PLUMBING: ['water', 'pipe', 'leak', 'drain', 'toilet', 'faucet', 'flood'],
-    ELECTRICAL: ['power', 'light', 'outlet', 'switch', 'circuit', 'electrical', 'voltage'],
-    HVAC: ['air', 'heating', 'cooling', 'temperature', 'thermostat', 'ventilation', 'ac'],
-    ELEVATOR: ['elevator', 'lift', 'stuck'],
-    SECURITY: ['security', 'lock', 'camera', 'alarm', 'break-in', 'theft'],
-    NETWORK: ['wifi', 'internet', 'network', 'connection', 'bandwidth', 'router'],
-    IT_INFRASTRUCTURE: ['server', 'system', 'database', 'cloud', 'infrastructure'],
-    HARDWARE: ['computer', 'laptop', 'printer', 'monitor', 'keyboard'],
-    SOFTWARE: ['software', 'app', 'application', 'install', 'update', 'license'],
-    BIOHAZARD: ['biohazard', 'contamination', 'biological', 'chemical'],
-    MEDICAL_EQUIPMENT: ['medical', 'equipment', 'ventilator', 'scanner'],
-    FIRE_SAFETY: ['fire', 'smoke', 'sprinkler', 'extinguisher'],
-    JANITORIAL: ['clean', 'spill', 'trash', 'garbage', 'mess', 'sanitation'],
-    ACCESS_CONTROL: ['password', 'login', 'locked', 'access', 'permission', 'credential'],
-    VPN: ['vpn', 'remote'],
-  };
-
-  for (const [cat, keywords] of Object.entries(map)) {
-    if (categories.includes(cat) && keywords.some((kw) => text.includes(kw))) return cat;
-  }
-  return categories[categories.length - 1];
-}
-
-function generateFallbackSteps(priority: Priority, category: string): string[] {
-  const cat = category.replace(/_/g, ' ').toLowerCase();
-  const base = [
-    `Log and acknowledge the ${cat} request in the system`,
-    `Dispatch appropriate ${cat} specialist to investigate on-site`,
-    'Diagnose root cause and assess full scope of impact',
-    'Execute corrective action and apply resolution',
-    'Verify fix, update documentation, and confirm with requester',
-  ];
-  if (priority === 'CRITICAL') {
-    return [
-      'IMMEDIATE: Alert on-call response team and escalate to supervisor',
-      ...base,
-      'Conduct post-incident review and update prevention protocols',
-    ];
-  }
-  return base;
 }

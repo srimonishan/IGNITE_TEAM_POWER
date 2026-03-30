@@ -9,9 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'ResolveHQ — AI-Powered Service Resolution Platform',
-  description:
-    'The intelligent service platform for the AI agent era. Understand, prioritize, and resolve service requests autonomously across every industry.',
+  title: 'ResolveHQ — AI-Powered Apartment Service Management',
+  description: 'Smart maintenance tracking with AI-powered priority detection, automated resolution, and real-time Kanban dashboard for residential properties.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

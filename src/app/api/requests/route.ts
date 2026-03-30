@@ -1,26 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { store } from '@/lib/store';
 import { analyzeRequest } from '@/lib/ai';
-import { ServiceRequest, Domain } from '@/lib/types';
+import { ServiceRequest } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, description, location, domain } = body;
+    const { title, description, location, tenantUid, tenantName, tenantUnit } = body;
 
-    if (!title || !description || !domain) {
-      return NextResponse.json(
-        { error: 'title, description, and domain are required' },
-        { status: 400 }
-      );
+    if (!title || !description) {
+      return NextResponse.json({ error: 'title and description required' }, { status: 400 });
     }
 
-    const aiAnalysis = await analyzeRequest(
-      description,
-      title,
-      location || '',
-      domain as Domain
-    );
+    const aiAnalysis = await analyzeRequest(description, title, location || '');
 
     const newRequest: ServiceRequest = {
       id: crypto.randomUUID(),
@@ -30,8 +22,11 @@ export async function POST(request: NextRequest) {
       priority: aiAnalysis.predictedPriority,
       location: location || 'Not specified',
       status: 'NEW',
-      domain: domain as Domain,
+      domain: 'apartment',
       timestamp: new Date().toISOString(),
+      tenantUid: tenantUid || '',
+      tenantName: tenantName || '',
+      tenantUnit: tenantUnit || '',
       aiAnalysis,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -39,19 +34,14 @@ export async function POST(request: NextRequest) {
 
     await store.create(newRequest);
 
-    const isCritical = aiAnalysis.predictedPriority === 'CRITICAL';
-
-    return NextResponse.json(
-      {
-        request: newRequest,
-        alert: isCritical
-          ? { type: 'CRITICAL', message: `CRITICAL request created: ${title}` }
-          : null,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      request: newRequest,
+      alert: aiAnalysis.predictedPriority === 'CRITICAL'
+        ? { type: 'CRITICAL', message: `CRITICAL: ${title}` }
+        : null,
+    }, { status: 201 });
   } catch (error) {
-    console.error('Error creating request:', error);
+    console.error('Create request error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -61,13 +51,14 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status') || undefined;
   const category = searchParams.get('category') || undefined;
   const priority = searchParams.get('priority') || undefined;
-  const domain = searchParams.get('domain') || undefined;
+  const tenantUid = searchParams.get('tenantUid') || undefined;
 
   const requests = await store.getAll({
     status: status as any,
     category,
     priority: priority as any,
-    domain,
+    domain: 'apartment',
+    tenantUid,
   });
 
   return NextResponse.json({ requests });
